@@ -1,11 +1,12 @@
 import { computed, reactive } from 'vue'
-import { ACHIEVEMENTS } from '../constants'
+import { ACHIEVEMENTS, LIFESTYLE_META } from '../constants'
 import { StorageService } from '../services/storage'
 import type {
   Achievement,
   DoseStatus,
   FamilyMember,
   HealthMetric,
+  LifestyleEntry,
   MedicalRecord,
   Medicine,
   MedicationLog,
@@ -23,6 +24,7 @@ interface FamilyState {
   plans: MedicationPlan[]
   logs: MedicationLog[]
   records: MedicalRecord[]
+  lifestyle: LifestyleEntry[]
   unlockedAchievements: Record<string, number>
 }
 
@@ -33,6 +35,7 @@ function loadState(): FamilyState {
     plans: StorageService.loadPlans(),
     logs: StorageService.loadLogs(),
     records: StorageService.loadRecords(),
+    lifestyle: StorageService.loadLifestyle(),
     unlockedAchievements: StorageService.loadAchievements(),
   }
 }
@@ -63,6 +66,7 @@ function createStore() {
     StorageService.savePlans(state.plans)
     StorageService.saveLogs(state.logs)
     StorageService.saveRecords(state.records)
+    StorageService.saveLifestyle(state.lifestyle)
     StorageService.saveAchievements(state.unlockedAchievements)
   }
 
@@ -83,6 +87,7 @@ function createStore() {
     state.plans = state.plans.filter((p) => p.memberId !== id)
     state.logs = state.logs.filter((l) => l.memberId !== id)
     state.records = state.records.filter((r) => r.memberId !== id)
+    state.lifestyle = state.lifestyle.filter((l) => l.memberId !== id)
     commit()
   }
 
@@ -174,6 +179,28 @@ function createStore() {
 
   function deleteRecord(id: string) {
     state.records = state.records.filter((r) => r.id !== id)
+    commit()
+  }
+
+  // ---- lifestyle ----
+  /**
+   * Same-day duplicate rule (per LIFESTYLE_META.mergeMode):
+   * - exercise / water ('add'): every submission is appended and summed into the daily total.
+   * - sleep ('overwrite'): the new entry replaces any existing entry for that member + date.
+   */
+  function addLifestyle(entry: Omit<LifestyleEntry, 'id' | 'timestamp'>) {
+    if (LIFESTYLE_META[entry.type].mergeMode === 'overwrite') {
+      state.lifestyle = state.lifestyle.filter(
+        (l) =>
+          !(l.memberId === entry.memberId && l.date === entry.date && l.type === entry.type),
+      )
+    }
+    state.lifestyle.push({ ...entry, id: uid(), timestamp: Date.now() })
+    commit()
+  }
+
+  function deleteLifestyle(id: string) {
+    state.lifestyle = state.lifestyle.filter((l) => l.id !== id)
     commit()
   }
 
@@ -278,6 +305,8 @@ function createStore() {
     logDose,
     addRecord,
     deleteRecord,
+    addLifestyle,
+    deleteLifestyle,
     // derived
     expiredMedicines,
     expiringMedicines,

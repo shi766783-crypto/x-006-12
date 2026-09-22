@@ -1,5 +1,6 @@
 import type {
   AchievementDefinition,
+  LifestyleType,
   MedicineCategory,
   MetricType,
 } from '../types'
@@ -67,8 +68,60 @@ export const METRIC_META: Record<MetricType, MetricMeta> = {
   },
 }
 
-export const ACHIEVEMENTS: AchievementDefinition[] = [
-  { id: 'first_member', name: '首次建档', icon: '🏠', description: '创建第一位家庭成员档案' },
+export type LifestyleMergeMode = 'add' | 'overwrite'
+
+export interface LifestyleMeta {
+  label: string
+  unit: string
+  icon: string
+  color: string
+  /** Same-day duplicate rule: 'add' accumulates, 'overwrite' keeps the latest. */
+  mergeMode: LifestyleMergeMode
+  mergeHint: string
+  /** Daily recommended target, used for progress display. */
+  target: number
+  /** Upper bound accepted by the form. */
+  max: number
+  step: string
+}
+
+export const LIFESTYLE_META: Record<LifestyleType, LifestyleMeta> = {
+  exercise: {
+    label: '运动',
+    unit: '分钟',
+    icon: '🏃',
+    color: '#e67e22',
+    mergeMode: 'add',
+    mergeHint: '同日多次提交，累加为当日总时长',
+    target: 30,
+    max: 1440,
+    step: '5',
+  },
+  water: {
+    label: '饮水',
+    unit: 'ml',
+    icon: '💧',
+    color: '#3498db',
+    mergeMode: 'add',
+    mergeHint: '同日多次提交，累加为当日总量',
+    target: 1500,
+    max: 10000,
+    step: '100',
+  },
+  sleep: {
+    label: '睡眠',
+    unit: '小时',
+    icon: '😴',
+    color: '#9b59b6',
+    mergeMode: 'overwrite',
+    mergeHint: '同日重复提交，新记录覆盖旧记录',
+    target: 8,
+    max: 24,
+    step: '0.5',
+  },
+}
+
+export const ACHIEVEMENTS: AchievementDefinition[] = [  { id: 'first_member', name: '首次建档', icon: '🏠', description: '创建第一位家庭成员档案' },
   { id: 'family_guardian', name: '全家守护者', icon: '👨‍👩‍👧‍👦', description: '建立 3 位及以上成员档案' },
   { id: 'first_metric', name: '健康管家', icon: '📈', description: '记录第一条健康指标' },
   { id: 'metric_expert', name: '健康记录达人', icon: '📊', description: '累计记录 20 条健康指标' },

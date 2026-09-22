@@ -1,5 +1,6 @@
 import type {
   FamilyMember,
+  LifestyleEntry,
   Medicine,
   MedicationLog,
   MedicationPlan,
@@ -16,6 +17,7 @@ const KEYS = {
   plans: 'fh_plans',
   logs: 'fh_logs',
   records: 'fh_records',
+  lifestyle: 'fh_lifestyle',
   achievements: 'fh_achievements',
 } as const
 
@@ -47,6 +49,9 @@ export const StorageService = {
 
   loadRecords: (): MedicalRecord[] => read(KEYS.records, []),
   saveRecords: (v: MedicalRecord[]) => write(KEYS.records, v),
+
+  loadLifestyle: (): LifestyleEntry[] => read(KEYS.lifestyle, []),
+  saveLifestyle: (v: LifestyleEntry[]) => write(KEYS.lifestyle, v),
 
   loadAchievements: (): Record<string, number> => read(KEYS.achievements, {}),
   saveAchievements: (v: Record<string, number>) => write(KEYS.achievements, v),

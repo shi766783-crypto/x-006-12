@@ -15,6 +15,21 @@ export type MedicineCategory =
 
 export type DoseStatus = 'taken' | 'skipped'
 
+export type LifestyleType = 'exercise' | 'water' | 'sleep'
+
+/**
+ * A single lifestyle submission. Same-day duplicates are merged by type:
+ * exercise/water accumulate into the daily total, sleep overwrites.
+ */
+export interface LifestyleEntry {
+  id: string
+  memberId: string
+  date: string
+  type: LifestyleType
+  value: number
+  timestamp: number
+}
+
 export interface HealthMetric {
   id: string
   type: MetricType
