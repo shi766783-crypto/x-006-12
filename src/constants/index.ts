@@ -67,6 +67,51 @@ export const METRIC_META: Record<MetricType, MetricMeta> = {
   },
 }
 
+export type LifestyleMetricKey = 'exerciseMinutes' | 'waterMl' | 'sleepHours'
+
+export interface LifestyleMetricMeta {
+  label: string
+  unit: string
+  icon: string
+  color: string
+  /** Daily reference shown as guidance, e.g. recommended intake. */
+  reference: string
+  step: number
+  min: number
+}
+
+export const LIFESTYLE_METRICS: Record<LifestyleMetricKey, LifestyleMetricMeta> = {
+  exerciseMinutes: {
+    label: '运动时长',
+    unit: '分钟',
+    icon: '🏃',
+    color: '#e67e22',
+    reference: '建议每天 30 分钟以上',
+    step: 5,
+    min: 0,
+  },
+  waterMl: {
+    label: '饮水量',
+    unit: 'ml',
+    icon: '💧',
+    color: '#3498db',
+    reference: '建议每天 1500-1700ml',
+    step: 50,
+    min: 0,
+  },
+  sleepHours: {
+    label: '睡眠时长',
+    unit: '小时',
+    icon: '😴',
+    color: '#9b59b6',
+    reference: '建议每天 7-8 小时',
+    step: 0.5,
+    min: 0,
+  },
+}
+
+export const LIFESTYLE_METRIC_KEYS = Object.keys(LIFESTYLE_METRICS) as LifestyleMetricKey[]
+
 export const ACHIEVEMENTS: AchievementDefinition[] = [
   { id: 'first_member', name: '首次建档', icon: '🏠', description: '创建第一位家庭成员档案' },
   { id: 'family_guardian', name: '全家守护者', icon: '👨‍👩‍👧‍👦', description: '建立 3 位及以上成员档案' },

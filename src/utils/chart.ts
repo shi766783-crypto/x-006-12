@@ -1,6 +1,7 @@
 export interface ChartPoint {
   label: string
-  value: number
+  /** null = no data for this point; the line breaks around it. */
+  value: number | null
 }
 
 /** Draw a minimal line chart on a canvas using only the 2D API. */
@@ -9,8 +10,9 @@ export function drawLineChart(
   points: ChartPoint[],
   color: string,
 ): void {
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
+  const context = canvas.getContext('2d')
+  if (!context) return
+  const ctx: CanvasRenderingContext2D = context
 
   const dpr = window.devicePixelRatio || 1
   const rect = canvas.getBoundingClientRect()
@@ -26,6 +28,22 @@ export function drawLineChart(
   const plotW = w - padX * 2
   const plotH = h - padY * 2
 
+  const getX = (i: number) =>
+    points.length === 1 ? padX + plotW / 2 : padX + (i / (points.length - 1)) * plotW
+
+  const drawXLabels = () => {
+    ctx.fillStyle = '#6b7280'
+    ctx.font = '11px sans-serif'
+    ctx.textAlign = 'center'
+    // With few points (e.g. 7 days) label every point; otherwise only the ends.
+    const labelAll = points.length <= 10
+    points.forEach((p, i) => {
+      if (labelAll || i === 0 || i === points.length - 1) {
+        ctx.fillText(p.label, getX(i), padY + plotH + 14)
+      }
+    })
+  }
+
   if (!points.length) {
     ctx.fillStyle = '#9ca3af'
     ctx.font = '13px sans-serif'
@@ -35,13 +53,21 @@ export function drawLineChart(
     return
   }
 
-  const values = points.map((p) => p.value)
+  const values = points.map((p) => p.value).filter((v): v is number => v !== null)
+
+  if (!values.length) {
+    ctx.fillStyle = '#9ca3af'
+    ctx.font = '13px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('近 7 天暂无记录', w / 2, h / 2)
+    drawXLabels()
+    return
+  }
+
   const min = Math.min(...values)
   const max = Math.max(...values)
   const range = max - min || 1
-
-  const getX = (i: number) =>
-    points.length === 1 ? padX + plotW / 2 : padX + (i / (points.length - 1)) * plotW
   const getY = (v: number) => padY + plotH - ((v - min) / range) * plotH
 
   // Horizontal grid lines
@@ -57,33 +83,54 @@ export function drawLineChart(
   }
   ctx.setLineDash([])
 
-  // Line
+  // Dashed baseline at 0 when the scale includes it
+  if (min < 0 && max > 0) {
+    ctx.strokeStyle = '#d1d5db'
+    ctx.setLineDash([2, 2])
+    ctx.beginPath()
+    ctx.moveTo(padX, getY(0))
+    ctx.lineTo(padX + plotW, getY(0))
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+
+  // Line (broken across null points)
   ctx.strokeStyle = color
   ctx.lineWidth = 2
   ctx.lineJoin = 'round'
   ctx.beginPath()
+  let penDown = false
   points.forEach((p, i) => {
+    if (p.value === null) {
+      penDown = false
+      return
+    }
     const px = getX(i)
     const py = getY(p.value)
-    if (i === 0) ctx.moveTo(px, py)
-    else ctx.lineTo(px, py)
+    if (!penDown) {
+      ctx.moveTo(px, py)
+      penDown = true
+    } else {
+      ctx.lineTo(px, py)
+    }
   })
   ctx.stroke()
 
-  // Dots
+  // Dots for real values; hollow markers for missing days
   points.forEach((p, i) => {
+    const px = getX(i)
+    if (p.value === null) {
+      ctx.fillStyle = '#e5e7eb'
+      ctx.beginPath()
+      ctx.arc(px, padY + plotH, 2.5, 0, Math.PI * 2)
+      ctx.fill()
+      return
+    }
     ctx.fillStyle = color
     ctx.beginPath()
-    ctx.arc(getX(i), getY(p.value), 3, 0, Math.PI * 2)
+    ctx.arc(px, getY(p.value), 3, 0, Math.PI * 2)
     ctx.fill()
   })
 
-  // First / last labels
-  ctx.fillStyle = '#6b7280'
-  ctx.font = '11px sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText(points[0].label, getX(0), padY + plotH + 14)
-  if (points.length > 1) {
-    ctx.fillText(points[points.length - 1].label, getX(points.length - 1), padY + plotH + 14)
-  }
+  drawXLabels()
 }

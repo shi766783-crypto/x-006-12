@@ -6,6 +6,7 @@ import type {
   DoseStatus,
   FamilyMember,
   HealthMetric,
+  LifestyleEntry,
   MedicalRecord,
   Medicine,
   MedicationLog,
@@ -23,6 +24,7 @@ interface FamilyState {
   plans: MedicationPlan[]
   logs: MedicationLog[]
   records: MedicalRecord[]
+  lifestyle: LifestyleEntry[]
   unlockedAchievements: Record<string, number>
 }
 
@@ -33,6 +35,7 @@ function loadState(): FamilyState {
     plans: StorageService.loadPlans(),
     logs: StorageService.loadLogs(),
     records: StorageService.loadRecords(),
+    lifestyle: StorageService.loadLifestyle(),
     unlockedAchievements: StorageService.loadAchievements(),
   }
 }
@@ -63,6 +66,7 @@ function createStore() {
     StorageService.savePlans(state.plans)
     StorageService.saveLogs(state.logs)
     StorageService.saveRecords(state.records)
+    StorageService.saveLifestyle(state.lifestyle)
     StorageService.saveAchievements(state.unlockedAchievements)
   }
 
@@ -83,6 +87,7 @@ function createStore() {
     state.plans = state.plans.filter((p) => p.memberId !== id)
     state.logs = state.logs.filter((l) => l.memberId !== id)
     state.records = state.records.filter((r) => r.memberId !== id)
+    state.lifestyle = state.lifestyle.filter((l) => l.memberId !== id)
     commit()
   }
 
@@ -175,6 +180,55 @@ function createStore() {
   function deleteRecord(id: string) {
     state.records = state.records.filter((r) => r.id !== id)
     commit()
+  }
+
+  // ---- lifestyle (per member, one entry per date) ----
+  /**
+   * Create or replace a member's lifestyle entry for a date.
+   * Rule: same (memberId, date) always OVERWRITES the whole entry —
+   * values are never accumulated across submissions.
+   */
+  function saveLifestyleEntry(
+    input: Omit<LifestyleEntry, 'id' | 'updatedAt'>,
+  ): { overwritten: boolean } {
+    const existing = state.lifestyle.find(
+      (l) => l.memberId === input.memberId && l.date === input.date,
+    )
+    if (existing) {
+      existing.exerciseMinutes = input.exerciseMinutes
+      existing.waterMl = input.waterMl
+      existing.sleepHours = input.sleepHours
+      existing.updatedAt = Date.now()
+      commit()
+      return { overwritten: true }
+    }
+    state.lifestyle.push({ ...input, id: uid(), updatedAt: Date.now() })
+    commit()
+    return { overwritten: false }
+  }
+
+  function deleteLifestyleEntry(id: string) {
+    state.lifestyle = state.lifestyle.filter((l) => l.id !== id)
+    commit()
+  }
+
+  function getLifestyleEntry(memberId: string, date: string): LifestyleEntry | undefined {
+    return state.lifestyle.find((l) => l.memberId === memberId && l.date === date)
+  }
+
+  /** Entries for one member, newest date first. */
+  function lifestyleHistory(memberId: string): LifestyleEntry[] {
+    return state.lifestyle
+      .filter((l) => l.memberId === memberId)
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  }
+
+  /** The member's last 7 days, oldest first; undefined marks a day with no entry. */
+  function lifestyleLast7(memberId: string): (LifestyleEntry | undefined)[] {
+    const byDate = new Map(
+      state.lifestyle.filter((l) => l.memberId === memberId).map((l) => [l.date, l]),
+    )
+    return lastNDates(7).map((date) => byDate.get(date))
   }
 
   // ---- derived state ----
@@ -278,6 +332,11 @@ function createStore() {
     logDose,
     addRecord,
     deleteRecord,
+    saveLifestyleEntry,
+    deleteLifestyleEntry,
+    getLifestyleEntry,
+    lifestyleHistory,
+    lifestyleLast7,
     // derived
     expiredMedicines,
     expiringMedicines,

@@ -83,6 +83,26 @@ export interface MedicationLog {
   timestamp: number
 }
 
+/**
+ * Per-member daily lifestyle entry.
+ * At most one entry per (memberId, date); re-submitting the same date
+ * OVERWRITES the previous values (upsert), never accumulates.
+ */
+export interface LifestyleEntry {
+  id: string
+  memberId: string
+  /** YYYY-MM-DD */
+  date: string
+  /** Exercise duration in minutes */
+  exerciseMinutes: number
+  /** Water intake in ml */
+  waterMl: number
+  /** Sleep duration in hours */
+  sleepHours: number
+  /** Last modification timestamp */
+  updatedAt: number
+}
+
 export interface MedicalRecord {
   id: string
   memberId: string
